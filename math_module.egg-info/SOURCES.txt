@@ -1,0 +1,7 @@
+pyproject.toml
+setup.py
+vector_d.cpp
+math_module.egg-info/PKG-INFO
+math_module.egg-info/SOURCES.txt
+math_module.egg-info/dependency_links.txt
+math_module.egg-info/top_level.txt
