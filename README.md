@@ -8,8 +8,8 @@ This module contains:
 2) class Vector_d. This class is in fact 1 dimensional double-data container.
   Below list of functionalities available in the cpp class:
     a) Template: 
-        - default constructor
-        - constructor depending on the size of the Vector
+		- default constructor
+   		- constructor depending on the size of the Vector
         - constructor based on the size of the Vector and coordinate given
         - constructor based on std::vector<T> data container
         - constructor based on the object Vector<T>
