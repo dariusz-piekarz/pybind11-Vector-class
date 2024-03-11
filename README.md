@@ -3,7 +3,7 @@ Based on pybind11, I created a Python module in C++.
 This module contains:
 
 - A function returning the n-th element of the Fibonacci sequence.
-- **Vector_d class:** This class is a 1-dimensional container for double data. Below is a list of functionalities available in the C++ class:
+- **Vector class:** This class is a 1-dimensional  C++ container for template type data. Based on Vector class there is created a class Vector_d which is Python embedding of Vector<double>. Below is a list of functionalities available in the C++ class:
   - **Template:**
     - Default constructor
     - Constructor depending on the size of the Vector
