@@ -5,15 +5,12 @@ This module contains:
 - A function returning the n-th element of the Fibonacci sequence.
 
 - Given the following ordinary differential equation (ODE) of order k:
-
- x^{k}(t) = f(t, x(t),..., x^{k-1}(t))
-
-- Subject to the initial conditions:
-
-x(t_{0}) = x_{0}
-x'(t_{0}) = x'_{0}
-...
-x^{k-1}(t_{0}) = x^{k-1}_{0}
+ - x^{k}(t) = f(t, x(t),..., x^{k-1}(t))
+   Subject to the initial conditions:
+   - x(t_{0}) = x_{0}
+   - x'(t_{0}) = x'_{0}
+   - ...
+   - x^{k-1}(t_{0}) = x^{k-1}_{0}
 
 - **Vector class:** This class is a 1-dimensional  C++ container for template type data. Based on Vector class there is created a class Vector_d which is Python embedding of Vector<double>. Below is a list of functionalities available in the C++ class:
   - **Template:**
