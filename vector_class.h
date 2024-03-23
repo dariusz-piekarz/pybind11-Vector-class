@@ -3,6 +3,8 @@
 
 #include <iostream>
 #include <vector>
+#include <string>
+#include <tuple>
 #include <stdexcept>
 #include <cmath>
 #include <pybind11/pybind11.h>
@@ -86,4 +88,6 @@ public:
     T get_coordinate(size_t );
 };
 
+std::tuple<std::vector<double>, std::vector<double>> general_ode(double (*)(std::vector<double>), double, double, std::vector<double>, int, std::string);
+std::tuple<std::vector<double>, std::vector<double>> general_ode_py(py::function, double, double, std::vector<double>, int, std::string);
 #endif // VECTOR_CLASS_H

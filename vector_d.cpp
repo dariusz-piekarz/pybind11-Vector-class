@@ -5,6 +5,7 @@
 #include <limits>
 #include <unordered_map>
 #include <functional>
+#include <tuple>
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -15,7 +16,12 @@ using namespace std;
 namespace py = pybind11;
 
 
-
+/**
+ * @brief Calculates the nth Fibonacci number
+ *
+ * @param n the index of the Fibonacci number to calculate
+ * @return long long the nth Fibonacci number
+ */
 long long fib(int n)
 {
     if (n == 0 || n == 1)
@@ -732,9 +738,133 @@ Vector<U> actpy2(std::vector<Vector<T>> collection, py::function fun)
 }
 
 
+tuple<vector<double>, vector<double>> general_ode(double (*fun)(vector<double>), double t0, double tmax, vector<double> x0, int no_nodes, string plot_expansion) {
+    if (plot_expansion == "right" || plot_expansion == "left")
+    {
+        vector<double> t(no_nodes);
+        for (int i = 0; i < no_nodes; i++)
+            t[i] = t0 + i * (tmax - t0) / no_nodes;
+
+        double dt = t[1] - t[0];
+        int k = x0.size();
+        vector<vector<double>> x(k + 1, vector<double>(no_nodes));
+
+        for (int i = 0; i < k; i++)
+            x[i][0] = x0[i];
+
+        for (int i = k; i > 0; i--)
+            for (int j = 0; j < count(x[i].begin(), x[i].end(), double()); j++)
+                x[i - 1][j + 1] = dt * x[i][j] + x[i - 1][j];
+
+        for (int j = 0; j < no_nodes - k; j++)
+            for (int i = k; i > -1; i--)
+                if (i == k)
+                {
+                    vector<double> arg(k + 1);
+                    for (int l = 0; l < k + 1; l++)
+                        arg[l] = (l == 0) ? t[j] : x[l - 1][j];
+                    x[i][j] = fun(arg);
+                }
+                else
+                    x[i][k - i + j] = x[i + 1][k - i + j - 1] * dt + x[i][k - i + j - 1];
+
+        if (plot_expansion == "left")
+        {
+            reverse(x[0].begin(), x[0].end());
+            reverse(t.begin(), t.end());
+            return make_tuple(t, x[0]);
+        }
+        else
+            return make_tuple(t, x[0]);
+    }
+    else if (plot_expansion == "both")
+    {
+        vector<double> t_left, t_right;
+        vector<double> x_left, x_right;
+        if (tmax > t0)
+        {
+            tie(t_left, x_left) = general_ode(fun, t0, 2 * t0 - 1 * tmax, x0, no_nodes, "left");
+            tie(t_right, x_right) = general_ode(fun, t0, tmax, x0, no_nodes, "right");
+        }
+        else if (tmax < t0)
+        {
+            tie(t_left, x_left) = general_ode(fun, t0, tmax, x0, no_nodes, "left");
+            tie(t_right, x_right) = general_ode(fun, t0, 2 * t0 - 1 * tmax, x0, no_nodes, "right");
+        }
+        t_left.insert(t_left.end(), t_right.begin() + 1, t_right.end());
+        x_left.insert(x_left.end(), x_right.begin() + 1, x_right.end());
+
+        return make_tuple(t_left, x_left);
+    }
+    else
+        return make_tuple(vector<double>(), vector<double>());
+}
+
+tuple<vector<double>, vector<double>> general_ode_py(py::function fun, double t0, double tmax, vector<double> x0, int no_nodes, string plot_expansion) {
+    if (plot_expansion == "right" || plot_expansion == "left")
+    {
+        vector<double> t(no_nodes);
+        for (int i = 0; i < no_nodes; i++)
+            t[i] = t0 + i * (tmax - t0) / no_nodes;
+
+        double dt = t[1] - t[0];
+        int k = x0.size();
+        vector<vector<double>> x(k + 1, vector<double>(no_nodes));
+
+        for (int i = 0; i < k; i++)
+            x[i][0] = x0[i];
+
+        for (int i = k; i > 0; i--)
+            for (int j = 0; j < count(x[i].begin(), x[i].end(), double()); j++)
+                x[i - 1][j + 1] = dt * x[i][j] + x[i - 1][j];
+
+        for (int j = 0; j < no_nodes - k; j++)
+            for (int i = k; i > -1; i--)
+                if (i == k)
+                {
+                    py::list arg;
+                    for (int l = 0; l < k + 1; l++)
+                        arg.append((l == 0) ? t[j] : x[l - 1][j]);
+                    x[i][j] = fun(*py::tuple(arg)).cast<double>();
+                }
+                else
+                    x[i][k - i + j] = x[i + 1][k - i + j - 1] * dt + x[i][k - i + j - 1];
+
+        if (plot_expansion == "left")
+        {
+            reverse(x[0].begin(), x[0].end());
+            reverse(t.begin(), t.end());
+            return make_tuple(t, x[0]);
+        }
+        else
+            return make_tuple(t, x[0]);
+    }
+    else if (plot_expansion == "both")
+    {
+        vector<double> t_left, t_right;
+        vector<double> x_left, x_right;
+        if (tmax > t0)
+        {
+            tie(t_left, x_left) = general_ode_py(fun, t0, 2 * t0 - 1 * tmax, x0, no_nodes, "left");
+            tie(t_right, x_right) = general_ode_py(fun, t0, tmax, x0, no_nodes, "right");
+        }
+        else if (tmax < t0)
+        {
+            tie(t_left, x_left) = general_ode_py(fun, t0, tmax, x0, no_nodes, "left");
+            tie(t_right, x_right) = general_ode_py(fun, t0, 2 * t0 - 1 * tmax, x0, no_nodes, "right");
+        }
+        t_left.insert(t_left.end(), t_right.begin() + 1, t_right.end());
+        x_left.insert(x_left.end(), x_right.begin() + 1, x_right.end());
+
+        return make_tuple(t_left, x_left);
+    }
+    else
+        return make_tuple(vector<double>(), vector<double>());
+}
 
 PYBIND11_MODULE(math_module, m)
 {
+    m.def("ode", &general_ode_py);
     m.def("add", &add<double>, py::arg("v"));
     m.def("mul", &mult<double>, py::arg("v"));
     m.def("mean", &mean<double>, py::arg("v"));
