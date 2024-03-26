@@ -6,6 +6,11 @@
 #include <unordered_map>
 #include <functional>
 #include <tuple>
+#include <thread>
+#include <mutex>
+
+
+#include <exprtk.hpp> //https://www.partow.net/programming/exprtk/index.html
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -75,7 +80,8 @@ template <typename T>
 Vector<T>::Vector() : n(-1), current_iter(0), coord(nullptr) {}
 
 template <typename T>
-Vector<T>::~Vector() {
+Vector<T>::~Vector()
+{
     delete[] coord;
 }
 
@@ -738,30 +744,36 @@ Vector<U> actpy2(std::vector<Vector<T>> collection, py::function fun)
 }
 
 
-tuple<vector<double>, vector<double>> general_ode(double (*fun)(vector<double>), double t0, double tmax, vector<double> x0, int no_nodes, string plot_expansion) {
+tuple<vector<double>, vector<double>> general_ode(
+    double (*fun)(vector<double>),
+    double t0,
+    double tmax,
+    vector<double> x0,
+    int no_nodes,
+    string plot_expansion) {
     if (plot_expansion == "right" || plot_expansion == "left")
     {
         vector<double> t(no_nodes);
-        for (int i = 0; i < no_nodes; i++)
+        for (size_t i = 0; i < no_nodes; i++)
             t[i] = t0 + i * (tmax - t0) / no_nodes;
 
         double dt = t[1] - t[0];
-        int k = x0.size();
+        size_t k = x0.size();
         vector<vector<double>> x(k + 1, vector<double>(no_nodes));
 
-        for (int i = 0; i < k; i++)
+        for (size_t i = 0; i < k; i++)
             x[i][0] = x0[i];
 
-        for (int i = k; i > 0; i--)
-            for (int j = 0; j < count(x[i].begin(), x[i].end(), double()); j++)
+        for (size_t i = k; i > 0; i--)
+            for (size_t j = 0; j < count(x[i].begin(), x[i].end(), double()); j++)
                 x[i - 1][j + 1] = dt * x[i][j] + x[i - 1][j];
 
-        for (int j = 0; j < no_nodes - k; j++)
-            for (int i = k; i > -1; i--)
+        for (size_t j = 0; j < no_nodes - k; j++)
+            for (size_t i = k; i > -1; i--)
                 if (i == k)
                 {
                     vector<double> arg(k + 1);
-                    for (int l = 0; l < k + 1; l++)
+                    for (size_t l = 0; l < k + 1; l++)
                         arg[l] = (l == 0) ? t[j] : x[l - 1][j];
                     x[i][j] = fun(arg);
                 }
@@ -800,30 +812,36 @@ tuple<vector<double>, vector<double>> general_ode(double (*fun)(vector<double>),
         return make_tuple(vector<double>(), vector<double>());
 }
 
-tuple<vector<double>, vector<double>> general_ode_py(py::function fun, double t0, double tmax, vector<double> x0, int no_nodes, string plot_expansion) {
+tuple<vector<double>, vector<double>> general_ode_py(
+    py::function fun,
+    double t0,
+    double tmax,
+    vector<double> x0,
+    int no_nodes,
+    string plot_expansion) {
     if (plot_expansion == "right" || plot_expansion == "left")
     {
         vector<double> t(no_nodes);
-        for (int i = 0; i < no_nodes; i++)
+        for (size_t i = 0; i < no_nodes; i++)
             t[i] = t0 + i * (tmax - t0) / no_nodes;
 
         double dt = t[1] - t[0];
-        int k = x0.size();
+        size_t k = x0.size();
         vector<vector<double>> x(k + 1, vector<double>(no_nodes));
 
-        for (int i = 0; i < k; i++)
+        for (size_t i = 0; i < k; i++)
             x[i][0] = x0[i];
 
-        for (int i = k; i > 0; i--)
-            for (int j = 0; j < count(x[i].begin(), x[i].end(), double()); j++)
+        for (size_t i = k; i > 0; i--)
+            for (size_t j = 0; j < count(x[i].begin(), x[i].end(), double()); j++)
                 x[i - 1][j + 1] = dt * x[i][j] + x[i - 1][j];
 
-        for (int j = 0; j < no_nodes - k; j++)
-            for (int i = k; i > -1; i--)
+        for (size_t j = 0; j < no_nodes - k; j++)
+            for (size_t i = k; i > -1; i--)
                 if (i == k)
                 {
                     py::list arg;
-                    for (int l = 0; l < k + 1; l++)
+                    for (size_t l = 0; l < k + 1; l++)
                         arg.append((l == 0) ? t[j] : x[l - 1][j]);
                     x[i][j] = fun(*py::tuple(arg)).cast<double>();
                 }
@@ -862,8 +880,139 @@ tuple<vector<double>, vector<double>> general_ode_py(py::function fun, double t0
         return make_tuple(vector<double>(), vector<double>());
 }
 
+inline double evaluateExpression(const string& expression, double x, double y, double z)
+{
+    typedef exprtk::expression<double> expression_t;
+    typedef exprtk::parser<double> parser_t;
+    typedef exprtk::symbol_table<double> symbol_table_t;
+
+    expression_t expr;
+    symbol_table_t symbol_table;
+    parser_t parser;
+
+    symbol_table.add_variable("x", x);
+    symbol_table.add_variable("y", y);
+    symbol_table.add_variable("z", z);
+
+    expr.register_symbol_table(symbol_table);
+
+    if (!parser.compile(expression, expr))
+        throw runtime_error("Cannot compile...");
+
+    return expr.value();
+}
+
+
+tuple<vector<double>,
+      vector<double>, 
+      vector<double>> implicit3D(
+        string equation,
+        vector<double> x,
+        vector<double> y,
+        vector<double>z,
+        double dt,
+        double precision,
+        int interval_div)
+{
+   size_t no_nodes_x = ceil((size_t)((x[1] - x[0]) / dt));
+   size_t no_nodes_y = ceil((size_t)((y[1] - y[0]) / dt));
+   size_t no_nodes_z = ceil((size_t)((z[1] - z[0]) / dt));
+
+   vector<double> x_interval(no_nodes_x);
+   vector<double> y_interval(no_nodes_y);
+   vector<double> z_interval(no_nodes_z);
+
+   for (size_t i = 0; i < no_nodes_x; i++)
+       x_interval[i] = x[0] + i * dt;
+   for (size_t i = 0; i < no_nodes_y; i++)
+       y_interval[i] = y[0] + i * dt;
+   for (size_t i = 0; i < no_nodes_z; i++)
+       z_interval[i] = z[0] + i * dt;
+
+    vector<double> x_solution;
+    vector<double> y_solution;
+    vector<double> z_solution;
+
+    size_t no_break_x = (size_t) floor(x_interval.size() / interval_div);
+    size_t no_break_y = (size_t) floor(y_interval.size() / interval_div);
+    size_t no_break_z = (size_t) floor(z_interval.size() / interval_div);
+    vector<thread> threads(pow(interval_div, 3));
+    mutex mtx;
+
+    for (int i=0; i < interval_div; i++)
+    {
+        vector<size_t> data_ind_x(2);
+        if (i < interval_div - 1)
+            data_ind_x = { i * no_break_x, (i + 1) * no_break_x };
+        else
+            data_ind_x = { i * no_break_x, x_interval.size() };
+        for (int j = 0; j < interval_div; j++)
+        {
+            vector<size_t> data_ind_y(2);
+            if (j < interval_div - 1)
+                data_ind_y = { j * no_break_y, (j + 1) * no_break_y };
+            else
+                data_ind_y = { j * no_break_y, y_interval.size() };
+
+            for (int k = 0; k < interval_div; k++)
+            {
+                vector<size_t> data_ind_z(2);
+                if (k < interval_div - 1)
+                    data_ind_z = {k * no_break_z, (k + 1) * no_break_z};
+                else
+                    data_ind_z = {k * no_break_z, z_interval.size()};
+                
+                int thread_index = i * interval_div * interval_div + j * interval_div + k;
+                threads[thread_index] = thread(loop_atomic, equation, ref(x_solution), ref(y_solution), ref(z_solution),
+                    ref(x_interval), ref(y_interval), ref(z_interval), data_ind_x, data_ind_y, data_ind_z, precision, ref(mtx));
+            }
+        }
+    }
+
+    for (thread & thr : threads)
+        thr.join();
+
+    return make_tuple(x_solution, y_solution, z_solution);
+}
+
+void loop_atomic(string equation, 
+    vector<double>& x_solution,
+    vector<double>& y_solution,
+    vector<double>& z_solution,
+    vector<double>& x_interval,
+    vector<double>& y_interval, 
+    vector<double>& z_interval,
+    vector<size_t> data_ind_x,
+    vector<size_t> data_ind_y,
+    vector<size_t> data_ind_z,
+    double precision,
+    mutex& mtx)
+{
+    vector<double> partial_solution_x;
+    vector<double> partial_solution_y;
+    vector<double> partial_solution_z;
+
+    for (size_t i = data_ind_x[0]; i < data_ind_x[1]; i++)
+        for (size_t j = data_ind_y[0]; j < data_ind_y[1]; j++)
+            for (size_t k = data_ind_z[0]; k < data_ind_z[1]; k++)
+                if (abs(evaluateExpression(equation, x_interval[i], y_interval[j], z_interval[k])) <= precision)
+                {
+                    partial_solution_x.push_back(x_interval[i]);
+                    partial_solution_y.push_back(y_interval[j]);
+                    partial_solution_z.push_back(z_interval[k]);
+                }
+            
+    if (!partial_solution_x.empty()) 
+    {
+        x_solution.insert(x_solution.end(), partial_solution_x.begin(), partial_solution_x.end());
+        y_solution.insert(y_solution.end(), partial_solution_y.begin(), partial_solution_y.end());
+        z_solution.insert(z_solution.end(), partial_solution_z.begin(), partial_solution_z.end());
+    }
+}
+
 PYBIND11_MODULE(math_module, m)
 {
+    m.def("implicit3D", &implicit3D);
     m.def("ode", &general_ode_py);
     m.def("add", &add<double>, py::arg("v"));
     m.def("mul", &mult<double>, py::arg("v"));

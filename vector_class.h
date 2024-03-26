@@ -7,6 +7,7 @@
 #include <tuple>
 #include <stdexcept>
 #include <cmath>
+#include <mutex>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
@@ -90,4 +91,8 @@ public:
 
 std::tuple<std::vector<double>, std::vector<double>> general_ode(double (*)(std::vector<double>), double, double, std::vector<double>, int, std::string);
 std::tuple<std::vector<double>, std::vector<double>> general_ode_py(py::function, double, double, std::vector<double>, int, std::string);
+std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> implicit3D(std::string, std::vector<double>, std::vector<double>, std::vector<double>, double, double, int);
+inline double evaluateExpression(const std::string&, double, double, double);
+inline void loop_atomic(std::string, std::vector<double>&, std::vector<double>&, std::vector<double>&, std::vector<double>&, std::vector<double>&, std::vector<double>&, std::vector<size_t>, std::vector<size_t>, std::vector<size_t>, double, std::mutex&);
+
 #endif // VECTOR_CLASS_H
