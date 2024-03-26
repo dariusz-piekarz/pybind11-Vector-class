@@ -1,4 +1,4 @@
-Based on pybind11, I created a Python module in C++. Possible minor changes and enhancements can be expected.
+Based on `pybind11`, I created a Python module in C++. Possible minor changes and enhancements can be expected.
 
 This module contains:
 
