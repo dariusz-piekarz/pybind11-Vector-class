@@ -4,17 +4,17 @@ This module contains:
 
 - A function returning the n-th element of the Fibonacci sequence.
 
-- A function that returns numerical solution of the given ordinary differential equation (ODE) of order k:
-   - x^{k}(t) = f(t, x(t),..., x^{k-1}(t))
-   - x(t_{0}) = x_{0}
-   - x'(t_{0}) = x'_{0}
+- A function that returns numerical solution of the given ordinary differential equation (ODE) of order `k`:
+   - `x^{k}(t) = f(t, x(t),..., x^{k-1}(t))`
+   - `x(t_{0}) = x_{0}`
+   - `x'(t_{0}) = x'_{0}`
    - ...
-   - x^{k-1}(t_{0}) = x^{k-1}_{0}
+   - `x^{k-1}(t_{0}) = x^{k-1}_{0}`
 
-- A function returning a set of points `(x, y, z)` such that `F(x, y, z) = 0` within provided bounds to each of variables x, y, z with provided error tolerance, nods granularity, and number of threads
-  employed to find desired solution. Function uses string evaluation based on `exprtk.hpp` (see: //https://www.partow.net/programming/exprtk/index.html ). 
+- A function returning a set of points `(x, y, z)` such that `F(x, y, z) = 0` within provided bounds to each of variables `x, y, z` with provided error tolerance, nods granularity, and number of threads
+  employed to find desired solution. Function uses string evaluation based on `exprtk.hpp` (see: https://www.partow.net/programming/exprtk/index.html ). 
 
-- **Vector class:** This class is a 1-dimensional  C++ container for template type data. Based on Vector class there is created a class Vector_d which is Python embedding of Vector<double>. Below is a list of functionalities available in the C++ class:
+- **Vector class:** This class is a 1-dimensional  C++ container for template type data. Based on Vector class there is created a class Vector_d which is Python embedding of `Vector<double>`. Below is a list of functionalities available in the C++ class:
   - **Template:**
     - Default constructor
     - Constructor depending on the size of the Vector
