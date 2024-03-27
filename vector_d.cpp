@@ -1004,9 +1004,11 @@ void loop_atomic(string equation,
             
     if (!partial_solution_x.empty()) 
     {
-        x_solution.insert(x_solution.end(), partial_solution_x.begin(), partial_solution_x.end());
-        y_solution.insert(y_solution.end(), partial_solution_y.begin(), partial_solution_y.end());
-        z_solution.insert(z_solution.end(), partial_solution_z.begin(), partial_solution_z.end());
+        mtx.lock();
+            x_solution.insert(x_solution.end(), partial_solution_x.begin(), partial_solution_x.end());
+            y_solution.insert(y_solution.end(), partial_solution_y.begin(), partial_solution_y.end());
+            z_solution.insert(z_solution.end(), partial_solution_z.begin(), partial_solution_z.end());
+        mtx.unlock();
     }
 }
 
